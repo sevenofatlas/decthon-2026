@@ -1,42 +1,303 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Qdrant + Ollama Frontend</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AI Agent</title>
+
   <style>
-    body { font-family: Arial; max-width: 600px; margin: 2rem auto; }
-    textarea, input { width: 100%; padding: 0.5rem; margin-bottom: 0.5rem; }
-    button { padding: 0.5rem 1rem; cursor: pointer; }
-    section { margin-bottom: 2rem; border-bottom: 1px solid #ccc; padding-bottom: 1rem; }
+    :root {
+      --bg: #f4f4f5;
+      --panel: #ffffff;
+      --border: #4b5563; /* darker gray for borders */
+      --text: #111827; /* dark text */
+      --muted: #6b7280;
+      --accent: #6366f1;
+      --danger: #ef4444;
+      --success: #22c55e;
+      --shadow: rgba(0,0,0,0.1);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      overflow: hidden; /* no scrolling */
+    }
+
+    /* HEADER */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 24px;
+      border-bottom: 2px solid var(--border);
+      font-family: 'Fira Code', 'Courier New', monospace;
+      background: #f9fafb;
+    }
+
+    header h1 {
+      font-size: 24px;
+      margin: 0;
+    }
+
+    .connection-status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .status-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--danger); /* default red */
+      display: inline-block;
+    }
+
+    main {
+      flex: 1;
+      display: flex;
+      gap: 16px;
+      padding: 16px;
+    }
+
+    /* LEFT COLUMN */
+    .left-column {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      width: 30%;
+      height: 100%;
+    }
+
+    /* Emote Section */
+    .emote-section {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid var(--border);
+      border-radius: 10px;
+      background: var(--panel);
+      box-shadow: 0 4px 8px var(--shadow);
+      overflow: hidden;
+    }
+
+    .emote-section img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+
+    /* Ingest Section */
+    .ingest-section {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      border: 2px solid var(--border);
+      border-radius: 10px;
+      background: var(--panel);
+      padding: 16px;
+      box-shadow: 0 4px 8px var(--shadow);
+      overflow: hidden; /* contain children */
+    }
+
+    /* ASK SECTION */
+    .ask-section {
+      flex: 1 1 65%;
+      display: flex;
+      flex-direction: column;
+      border: 2px solid var(--border);
+      border-radius: 10px;
+      background: var(--panel);
+      padding: 16px;
+      box-shadow: 0 4px 8px var(--shadow);
+      overflow: hidden;
+    }
+
+    /* HEADINGS */
+    h2 {
+      margin: 0 0 12px;
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text);
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 6px;
+    }
+
+    /* INPUTS & BUTTONS */
+    textarea, input {
+      background: #f9fafb;
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px;
+      font-size: 14px;
+      font-family: 'Fira Code', 'Courier New', monospace;
+    }
+
+    textarea {
+      flex: 1;
+      resize: none;
+      overflow: auto;
+      margin-bottom: 8px;
+    }
+
+    input {
+      margin-bottom: 8px;
+    }
+
+    button {
+      padding: 8px 14px;
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      cursor: pointer;
+      align-self: flex-start;
+      margin-bottom: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    /* FEEDBACK */
+    .feedback {
+      font-size: 13px;
+      color: var(--muted);
+      flex-shrink: 0;
+    }
+
+    .feedback.success { color: var(--success); }
+    .feedback.error { color: var(--danger); }
+
+    /* ANSWER BOX */
+    .answer {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .answer label {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    pre {
+      flex: 1;
+      background: #f9fafb;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 12px;
+      font-size: 14px;
+      font-family: 'Fira Code', 'Courier New', monospace;
+      overflow: auto;
+      margin: 0;
+    }
+
+    footer {
+      display: none; /* removed footer */
+    }
+
   </style>
 </head>
 <body>
-  <h1>Qdrant + Ollama Frontend</h1>
 
-  <section>
-    <h2>Ingest Text</h2>
-    <textarea id="text" placeholder="Enter text to store"></textarea>
-    <input type="text" id="id" placeholder="Optional ID"/>
-    <button onclick="ingest()">Ingest</button>
-    <p id="ingest-status"></p>
-  </section>
+  <header>
+    <h1>AI Agent</h1>
+    <div class="connection-status">
+      <span id="connectionText">Connecting...</span></span>
+      <span class="status-dot" id="connectionDot">
+    </div>
+  </header>
 
-  <section>
-    <h2>Ask Question</h2>
-    <input type="text" id="question" placeholder="Enter your question"/>
-    <button onclick="ask()">Ask</button>
-    <p><strong>Answer:</strong> <span id="answer"></span></p>
-  </section>
+  <main>
+    <!-- LEFT COLUMN -->
+    <div class="left-column">
+      <section class="emote-section">
+        <img src="emote.gif" alt="Emote" />
+      </section>
+
+      <section class="ingest-section">
+        <h2>Ingest Text</h2>
+        <textarea id="text" placeholder="Enter text to store"></textarea>
+        <input type="text" id="id" placeholder="Optional ID"/>
+        <button id="ingestBtn">Ingest</button>
+        <p id="ingest-status" class="feedback"></p>
+      </section>
+    </div>
+
+    <!-- ASK SECTION -->
+    <section class="ask-section">
+      <h2>Ask Question</h2>
+      <input type="text" id="question" placeholder="Enter your question"/>
+      <button id="askBtn">Ask</button>
+      <div class="answer">
+        <label>Answer</label>
+        <pre id="answer"></pre>
+      </div>
+    </section>
+  </main>
 
   <script>
-    // ✅ Backend running in Docker exposed on host port 3000
     const backendUrl = "http://localhost:3000";
 
-    async function ingest() {
-      const text = document.getElementById("text").value;
-      const id = document.getElementById("id").value;
+    const ingestInput = document.getElementById("text");
+    const ingestId = document.getElementById("id");
+    const questionInput = document.getElementById("question");
+    const ingestBtn = document.getElementById("ingestBtn");
+    const askBtn = document.getElementById("askBtn");
+    const ingestStatus = document.getElementById("ingest-status");
+    const answerBox = document.getElementById("answer");
+    const connectionDot = document.getElementById("connectionDot");
+    const connectionText = document.getElementById("connectionText");
 
-      document.getElementById("ingest-status").textContent = "Storing...";
+    // Update connection dot color
+    async function checkConnection() {
+      try {
+        const res = await fetch(`${backendUrl}/ping`);
+        if(res.ok){
+          connectionDot.style.background = 'var(--success)';
+          connectionText.textContent = 'Connected';
+        } else {
+          connectionDot.style.background = 'var(--danger)';
+          connectionText.textContent = 'Not Connected';
+        }
+      } catch {
+        connectionDot.style.background = 'var(--danger)';
+        connectionText.textContent = 'Not Connected';
+      }
+    }
+
+    checkConnection();
+    setInterval(checkConnection, 5000); // check every 5 sec
+
+    async function ingest() {
+      const text = ingestInput.value.trim();
+      const id = ingestId.value.trim();
+      if (!text) return;
+
+      ingestBtn.disabled = true;
+      ingestStatus.textContent = "Storing...";
+      ingestStatus.className = "feedback";
 
       try {
         const res = await fetch(`${backendUrl}/ingest`, {
@@ -45,18 +306,24 @@
           body: JSON.stringify({ text, id })
         });
         const data = await res.json();
-        document.getElementById("ingest-status").textContent = data.status;
-        document.getElementById("text").value = "";
-        document.getElementById("id").value = "";
-      } catch (err) {
-        console.error(err);
-        document.getElementById("ingest-status").textContent = "Error storing text";
+        ingestStatus.textContent = data.status || "Stored successfully.";
+        ingestStatus.className = "feedback success";
+        ingestInput.value = "";
+        ingestId.value = "";
+      } catch {
+        ingestStatus.textContent = "Error storing text";
+        ingestStatus.className = "feedback error";
+      } finally {
+        ingestBtn.disabled = false;
       }
     }
 
     async function ask() {
-      const question = document.getElementById("question").value;
-      document.getElementById("answer").textContent = "Fetching...";
+      const question = questionInput.value.trim();
+      if (!question) return;
+
+      askBtn.disabled = true;
+      answerBox.textContent = "Fetching...";
 
       try {
         const res = await fetch(`${backendUrl}/ask`, {
@@ -65,12 +332,18 @@
           body: JSON.stringify({ question })
         });
         const data = await res.json();
-        document.getElementById("answer").textContent = data.answer;
-      } catch (err) {
-        console.error(err);
-        document.getElementById("answer").textContent = "Error fetching answer";
+        answerBox.textContent = data.answer || "No response from backend.";
+      } catch {
+        answerBox.textContent = "Error fetching answer";
+      } finally {
+        askBtn.disabled = false;
       }
     }
+
+    ingestBtn.addEventListener("click", ingest);
+    askBtn.addEventListener("click", ask);
+
   </script>
+
 </body>
 </html>
