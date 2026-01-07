@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Qdrant + Ollama Frontend</title>
+  <style>
+    body { font-family: Arial; max-width: 600px; margin: 2rem auto; }
+    textarea, input { width: 100%; padding: 0.5rem; margin-bottom: 0.5rem; }
+    button { padding: 0.5rem 1rem; cursor: pointer; }
+    section { margin-bottom: 2rem; border-bottom: 1px solid #ccc; padding-bottom: 1rem; }
+  </style>
+</head>
+<body>
+  <h1>Qdrant + Ollama Frontend</h1>
+
+  <section>
+    <h2>Ingest Text</h2>
+    <textarea id="text" placeholder="Enter text to store"></textarea>
+    <input type="text" id="id" placeholder="Optional ID"/>
+    <button onclick="ingest()">Ingest</button>
+    <p id="ingest-status"></p>
+  </section>
+
+  <section>
+    <h2>Ask Question</h2>
+    <input type="text" id="question" placeholder="Enter your question"/>
+    <button onclick="ask()">Ask</button>
+    <p><strong>Answer:</strong> <span id="answer"></span></p>
+  </section>
+
+  <script>
+    // ✅ Backend running in Docker exposed on host port 3000
+    const backendUrl = "http://localhost:3000";
+
+    async function ingest() {
+      const text = document.getElementById("text").value;
+      const id = document.getElementById("id").value;
+
+      document.getElementById("ingest-status").textContent = "Storing...";
+
+      try {
+        const res = await fetch(`${backendUrl}/ingest`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text, id })
+        });
+        const data = await res.json();
+        document.getElementById("ingest-status").textContent = data.status;
+        document.getElementById("text").value = "";
+        document.getElementById("id").value = "";
+      } catch (err) {
+        console.error(err);
+        document.getElementById("ingest-status").textContent = "Error storing text";
+      }
+    }
+
+    async function ask() {
+      const question = document.getElementById("question").value;
+      document.getElementById("answer").textContent = "Fetching...";
+
+      try {
+        const res = await fetch(`${backendUrl}/ask`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ question })
+        });
+        const data = await res.json();
+        document.getElementById("answer").textContent = data.answer;
+      } catch (err) {
+        console.error(err);
+        document.getElementById("answer").textContent = "Error fetching answer";
+      }
+    }
+  </script>
+</body>
+</html>

@@ -1,29 +1,34 @@
 import express from "express";
+import cors from "cors";
 import fetch from "node-fetch";
 import { QdrantClient } from "@qdrant/js-client-rest";
 
 const app = express();
+
+// ---------- Middleware ----------
 app.use(express.json());
 
-const OLLAMA = process.env.OLLAMA_URL; // e.g. http://ollama:11434
+// Allow requests from frontend and file:// (for testing)
+app.use(cors());          // allow all origins for simplicity
+app.options("*", cors()); // handle preflight requests
+
+// ---------- Qdrant + Ollama setup ----------
+const OLLAMA = process.env.OLLAMA_URL; 
 const qdrant = new QdrantClient({ url: process.env.QDRANT_URL });
 
-// Create collection once
+// Create collection if it doesn't exist
 await qdrant
   .createCollection("docs", {
     vectors: { size: 768, distance: "Cosine" }
   })
-  .catch(() => {});
+  .catch(() => { console.log("Collection 'docs' already exists"); });
 
-/* ---------- Embeddings ---------- */
+/* ---------- Embedding function ---------- */
 async function embed(text) {
   const res = await fetch(`${OLLAMA}/api/embeddings`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "nomic-embed-text",
-      prompt: text
-    })
+    body: JSON.stringify({ model: "nomic-embed-text", prompt: text })
   });
 
   if (!res.ok) {
@@ -32,7 +37,6 @@ async function embed(text) {
   }
 
   const json = await res.json();
-
   if (!Array.isArray(json.embedding)) {
     throw new Error("Invalid embedding response from Ollama");
   }
@@ -40,73 +44,92 @@ async function embed(text) {
   return json.embedding;
 }
 
-/* ---------- Ingest ---------- */
+/* ---------- Ingest endpoint ---------- */
 app.post("/ingest", async (req, res) => {
-  const { text, id } = req.body;
+  try {
+    const { text, id } = req.body;
 
-  const vector = await embed(text);
-
-  if (vector.length !== 768) {
-    throw new Error("Embedding size mismatch");
-  }
-
-  await qdrant.upsert("docs", {
-    points: [
-      {
-        id: id ?? Date.now(),
-        vector,
-        payload: { text }
-      }
-    ]
-  });
-
-  res.json({ status: "stored" });
-});
-
-/* ---------- Ask ---------- */
-app.post("/ask", async (req, res) => {
-  const { question } = req.body;
-
-  const vector = await embed(question);
-
-  const results = await qdrant.search("docs", {
-    vector,
-    limit: 3
-  });
-
-  const context = results
-    .map(r => r.payload?.text)
-    .filter(Boolean)
-    .join("\n");
-
-  const response = await fetch(`${OLLAMA}/api/generate`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "llama3",
-      prompt: `Answer using context only:\n${context}\n\nQuestion: ${question}`
-    })
-  });
-
-  let answer = "";
-  let buffer = "";
-
-  for await (const chunk of response.body) {
-    buffer += chunk.toString();
-    const lines = buffer.split("\n");
-    buffer = lines.pop();
-
-    for (const line of lines) {
-      if (!line.trim()) continue;
-      const json = JSON.parse(line);
-      if (json.response) answer += json.response;
+    if (!text || text.trim() === "") {
+      return res.status(400).json({ error: "Text is required" });
     }
-  }
 
-  res.json({ answer });
+    const vector = await embed(text);
+
+    if (vector.length !== 768) {
+      throw new Error("Embedding size mismatch");
+    }
+
+    // Ensure valid Qdrant ID
+    let pointId;
+    if (id && !isNaN(Number(id))) {
+      pointId = Number(id);
+    } else {
+      pointId = Date.now(); // fallback
+    }
+
+    await qdrant.upsert("docs", {
+      points: [
+        { id: pointId, vector, payload: { text } }
+      ]
+    });
+
+    res.json({ status: "stored", id: pointId });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
-/* ---------- Server ---------- */
-app.listen(3000, () => {
-  console.log("Agent running on http://localhost:3000");
+/* ---------- Ask endpoint ---------- */
+app.post("/ask", async (req, res) => {
+  try {
+    const { question } = req.body;
+    if (!question || question.trim() === "") {
+      return res.status(400).json({ error: "Question is required" });
+    }
+
+    const vector = await embed(question);
+
+    const results = await qdrant.search("docs", { vector, limit: 3 });
+
+    const context = results
+      .map(r => r.payload?.text)
+      .filter(Boolean)
+      .join("\n");
+
+    const response = await fetch(`${OLLAMA}/api/generate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "granite4:350m",
+        prompt: `Answer using context only:\n${context}\n\nQuestion: ${question}`
+      })
+    });
+
+    let answer = "";
+    let buffer = "";
+
+    for await (const chunk of response.body) {
+      buffer += chunk.toString();
+      const lines = buffer.split("\n");
+      buffer = lines.pop();
+
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        const json = JSON.parse(line);
+        if (json.response) answer += json.response;
+      }
+    }
+
+    res.json({ answer });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/* ---------- Start server ---------- */
+const PORT = 3000;
+app.listen(PORT, () => {
+  console.log(`Agent running on http://localhost:${PORT}`);
 });
