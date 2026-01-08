@@ -90,7 +90,7 @@ app.post("/ask", async (req, res) => {
 
     const vector = await embed(question);
 
-    const results = await qdrant.search("docs", { vector, limit: 3 });
+    const results = await qdrant.search("docs", { vector, limit: 10 });
 
     const context = results
       .map(r => r.payload?.text)

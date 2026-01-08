@@ -1,349 +1,329 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>AI Agent</title>
+ <meta charset="UTF-8" />
+ <meta name="viewport" content="width=device-width, initial-scale=1" />
+ <title>AI Agent</title>
+ <style>
+   * { box-sizing: border-box; margin: 0; padding: 0; }
+   
+   body {
+     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+     height: 100vh;
+     display: flex;
+     flex-direction: column;
+     background: #0a0a0a;
+     color: #e5e5e5;
+   }
 
-  <style>
-    :root {
-      --bg: #f4f4f5;
-      --panel: #ffffff;
-      --border: #4b5563; /* darker gray for borders */
-      --text: #111827; /* dark text */
-      --muted: #6b7280;
-      --accent: #6366f1;
-      --danger: #ef4444;
-      --success: #22c55e;
-      --shadow: rgba(0,0,0,0.1);
-    }
+   header {
+     padding: 16px 20px;
+     border-bottom: 1px solid #2a2a2a;
+     display: flex;
+     justify-content: space-between;
+     align-items: center;
+   }
 
-    * {
-      box-sizing: border-box;
-    }
+   header h1 {
+     font-size: 18px;
+     font-weight: 600;
+   }
 
-    body {
-      margin: 0;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-      background: var(--bg);
-      color: var(--text);
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      overflow: hidden; /* no scrolling */
-    }
+   main {
+     flex: 1;
+     display: flex;
+     overflow: hidden;
+   }
 
-    /* HEADER */
-    header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 16px 24px;
-      border-bottom: 2px solid var(--border);
-      font-family: 'Fira Code', 'Courier New', monospace;
-      background: #f9fafb;
-    }
+   /* CHAT SECTION */
+   .chat-section {
+     flex: 1;
+     display: flex;
+     flex-direction: column;
+     border-right: 1px solid #2a2a2a;
+   }
 
-    header h1 {
-      font-size: 24px;
-      margin: 0;
-    }
+   #messages {
+     flex: 1;
+     overflow-y: auto;
+     padding: 20px;
+     display: flex;
+     flex-direction: column;
+     gap: 12px;
+   }
 
-    .connection-status {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 13px;
-      font-weight: 600;
-    }
+   .msg {
+     display: flex;
+     gap: 8px;
+     max-width: 80%;
+   }
 
-    .status-dot {
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      background: var(--danger); /* default red */
-      display: inline-block;
-    }
+   .msg.user {
+     margin-left: auto;
+     flex-direction: row-reverse;
+   }
 
-    main {
-      flex: 1;
-      display: flex;
-      gap: 16px;
-      padding: 16px;
-    }
+   .msg div {
+     padding: 10px 14px;
+     border-radius: 16px;
+     font-size: 14px;
+     line-height: 1.4;
+   }
 
-    /* LEFT COLUMN */
-    .left-column {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-      width: 30%;
-      height: 100%;
-    }
+   .msg.ai div {
+     background: #1a1a1a;
+     border: 1px solid #2a2a2a;
+   }
 
-    /* Emote Section */
-    .emote-section {
-      flex: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border: 2px solid var(--border);
-      border-radius: 10px;
-      background: var(--panel);
-      box-shadow: 0 4px 8px var(--shadow);
-      overflow: hidden;
-    }
+   .msg.user div {
+     background: #2563eb;
+     color: white;
+   }
 
-    .emote-section img {
-      max-width: 100%;
-      max-height: 100%;
-      object-fit: contain;
-    }
+   .input-area {
+     padding: 16px 20px;
+     border-top: 1px solid #2a2a2a;
+     display: flex;
+     gap: 8px;
+   }
 
-    /* Ingest Section */
-    .ingest-section {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      border: 2px solid var(--border);
-      border-radius: 10px;
-      background: var(--panel);
-      padding: 16px;
-      box-shadow: 0 4px 8px var(--shadow);
-      overflow: hidden; /* contain children */
-    }
+   .input-area input {
+     flex: 1;
+     padding: 12px 16px;
+     background: #1a1a1a;
+     border: 1px solid #2a2a2a;
+     border-radius: 20px;
+     font-size: 14px;
+     color: #e5e5e5;
+     outline: none;
+   }
 
-    /* ASK SECTION */
-    .ask-section {
-      flex: 1 1 65%;
-      display: flex;
-      flex-direction: column;
-      border: 2px solid var(--border);
-      border-radius: 10px;
-      background: var(--panel);
-      padding: 16px;
-      box-shadow: 0 4px 8px var(--shadow);
-      overflow: hidden;
-    }
+   .input-area input:focus {
+     border-color: #2563eb;
+   }
 
-    /* HEADINGS */
-    h2 {
-      margin: 0 0 12px;
-      font-size: 16px;
-      font-weight: 600;
-      color: var(--text);
-      border-bottom: 1px solid var(--border);
-      padding-bottom: 6px;
-    }
+   .input-area button {
+     padding: 12px 24px;
+     background: #2563eb;
+     color: white;
+     border: none;
+     border-radius: 20px;
+     font-size: 14px;
+     font-weight: 500;
+     cursor: pointer;
+   }
 
-    /* INPUTS & BUTTONS */
-    textarea, input {
-      background: #f9fafb;
-      color: var(--text);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 10px;
-      font-size: 14px;
-      font-family: 'Fira Code', 'Courier New', monospace;
-    }
+   .input-area button:disabled {
+     opacity: 0.5;
+     cursor: not-allowed;
+   }
 
-    textarea {
-      flex: 1;
-      resize: none;
-      overflow: auto;
-      margin-bottom: 8px;
-    }
+   /* SIDEBAR */
+   .sidebar {
+     width: 350px;
+     display: flex;
+     flex-direction: column;
+     background: #0f0f0f;
+   }
 
-    input {
-      margin-bottom: 8px;
-    }
+   .section {
+     padding: 20px;
+     border-bottom: 1px solid #2a2a2a;
+   }
 
-    button {
-      padding: 8px 14px;
-      background: var(--accent);
-      color: white;
-      border: none;
-      border-radius: 6px;
-      font-size: 13px;
-      cursor: pointer;
-      align-self: flex-start;
-      margin-bottom: 8px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-    }
+   .section h2 {
+     font-size: 14px;
+     font-weight: 600;
+     margin-bottom: 16px;
+     color: #888;
+     text-transform: uppercase;
+     letter-spacing: 0.5px;
+   }
 
-    button:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-      box-shadow: none;
-    }
+   .section textarea,
+   .section input {
+     width: 100%;
+     padding: 10px 12px;
+     background: #1a1a1a;
+     border: 1px solid #2a2a2a;
+     border-radius: 8px;
+     font-size: 13px;
+     color: #e5e5e5;
+     outline: none;
+     font-family: inherit;
+     margin-bottom: 10px;
+   }
 
-    /* FEEDBACK */
-    .feedback {
-      font-size: 13px;
-      color: var(--muted);
-      flex-shrink: 0;
-    }
+   .section textarea {
+     resize: none;
+     height: 100px;
+   }
 
-    .feedback.success { color: var(--success); }
-    .feedback.error { color: var(--danger); }
+   .section textarea:focus,
+   .section input:focus {
+     border-color: #2563eb;
+   }
 
-    /* ANSWER BOX */
-    .answer {
-      display: flex;
-      flex-direction: column;
-      flex: 1;
-      overflow: hidden;
-    }
+   .section button {
+     width: 100%;
+     padding: 10px;
+     background: #2563eb;
+     color: white;
+     border: none;
+     border-radius: 8px;
+     font-size: 13px;
+     font-weight: 500;
+     cursor: pointer;
+   }
 
-    .answer label {
-      font-size: 12px;
-      color: var(--muted);
-      margin-bottom: 6px;
-    }
+   .section button:disabled {
+     opacity: 0.5;
+     cursor: not-allowed;
+   }
 
-    pre {
-      flex: 1;
-      background: #f9fafb;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 12px;
-      font-size: 14px;
-      font-family: 'Fira Code', 'Courier New', monospace;
-      overflow: auto;
-      margin: 0;
-    }
+   .feedback {
+     margin-top: 8px;
+     font-size: 12px;
+     color: #888;
+   }
 
-    footer {
-      display: none; /* removed footer */
-    }
+   .feedback.success {
+     color: #22c55e;
+   }
 
-  </style>
+   .feedback.error {
+     color: #ef4444;
+   }
+
+   ::-webkit-scrollbar {
+     width: 8px;
+   }
+
+   ::-webkit-scrollbar-track {
+     background: #0a0a0a;
+   }
+
+   ::-webkit-scrollbar-thumb {
+     background: #2a2a2a;
+     border-radius: 4px;
+   }
+ </style>
 </head>
 <body>
+ <header>
+   <h1>AI Agent</h1>
+ </header>
+ 
+ <main>
+   <!-- CHAT SECTION -->
+   <div class="chat-section">
+     <div id="messages">
+       <div class="msg ai"><div>Hello! I'm your AI assistant. Ask me anything!</div></div>
+     </div>
+     <div class="input-area">
+       <input id="chatInput" placeholder="Type your message..." />
+       <button id="chatBtn">Send</button>
+     </div>
+   </div>
 
-  <header>
-    <h1>AI Agent</h1>
-    <div class="connection-status">
-      <span id="connectionText">Connecting...</span></span>
-      <span class="status-dot" id="connectionDot">
-    </div>
-  </header>
+   <!-- SIDEBAR -->
+   <aside class="sidebar">
+     <div class="section">
+       <h2>Add Knowledge</h2>
+       <textarea id="dataText" placeholder="Enter information to add to knowledge base..."></textarea>
+       <input id="dataId" placeholder="Optional ID (e.g., doc-123)" />
+       <button id="dataBtn">Add Data</button>
+       <p id="dataStatus" class="feedback"></p>
+     </div>
+   </aside>
+ </main>
 
-  <main>
-    <!-- LEFT COLUMN -->
-    <div class="left-column">
-      <section class="emote-section">
-        <img src="emote.gif" alt="Emote" />
-      </section>
+<script>
+   const backendUrl = "http://localhost:3000";
+   
+   // Elements
+   const chatInput = document.getElementById("chatInput");
+   const chatBtn = document.getElementById("chatBtn");
+   const messages = document.getElementById("messages");
+   const dataText = document.getElementById("dataText");
+   const dataId = document.getElementById("dataId");
+   const dataBtn = document.getElementById("dataBtn");
+   const dataStatus = document.getElementById("dataStatus");
 
-      <section class="ingest-section">
-        <h2>Ingest Text</h2>
-        <textarea id="text" placeholder="Enter text to store"></textarea>
-        <input type="text" id="id" placeholder="Optional ID"/>
-        <button id="ingestBtn">Ingest</button>
-        <p id="ingest-status" class="feedback"></p>
-      </section>
-    </div>
+  
 
-    <!-- ASK SECTION -->
-    <section class="ask-section">
-      <h2>Ask Question</h2>
-      <input type="text" id="question" placeholder="Enter your question"/>
-      <button id="askBtn">Ask</button>
-      <div class="answer">
-        <label>Answer</label>
-        <pre id="answer"></pre>
-      </div>
-    </section>
-  </main>
+   // Add message to chat
+   function addMsg(text, isUser) {
+     const msg = document.createElement("div");
+     msg.className = `msg ${isUser ? "user" : "ai"}`;
+     msg.innerHTML = `<div>${text}</div>`;
+     messages.appendChild(msg);
+     messages.scrollTop = messages.scrollHeight;
+   }
 
-  <script>
-    const backendUrl = "http://localhost:3000";
+   // Send chat message
+   async function sendMessage() {
+     const text = chatInput.value.trim();
+     if (!text) return;
 
-    const ingestInput = document.getElementById("text");
-    const ingestId = document.getElementById("id");
-    const questionInput = document.getElementById("question");
-    const ingestBtn = document.getElementById("ingestBtn");
-    const askBtn = document.getElementById("askBtn");
-    const ingestStatus = document.getElementById("ingest-status");
-    const answerBox = document.getElementById("answer");
-    const connectionDot = document.getElementById("connectionDot");
-    const connectionText = document.getElementById("connectionText");
+     addMsg(text, true);  // Add user message
+     chatInput.value = "";  // Clear input field
+     chatBtn.disabled = true;  // Disable button while waiting for response
 
-    // Update connection dot color
-    async function checkConnection() {
-      try {
-        const res = await fetch(`${backendUrl}/ping`);
-        if(res.ok){
-          connectionDot.style.background = 'var(--success)';
-          connectionText.textContent = 'Connected';
-        } else {
-          connectionDot.style.background = 'var(--danger)';
-          connectionText.textContent = 'Not Connected';
-        }
-      } catch {
-        connectionDot.style.background = 'var(--danger)';
-        connectionText.textContent = 'Not Connected';
-      }
-    }
+     try {
+       const res = await fetch(`${backendUrl}/ask`, {
+         method: "POST",
+         headers: { "Content-Type": "application/json" },
+         body: JSON.stringify({ question: text })
+       });
+       const data = await res.json();
+       addMsg(data.answer || "No response from backend", false);  // AI response
+     } catch {
+       addMsg("Connection error. Please check if backend is running.", false);  // Error message
+     } finally {
+       chatBtn.disabled = false;  // Enable button after response
+     }
+   }
 
-    checkConnection();
-    setInterval(checkConnection, 5000); // check every 5 sec
+   chatBtn.onclick = sendMessage;
+   chatInput.onkeypress = (e) => {
+     if (e.key === "Enter" && !e.shiftKey) {
+       e.preventDefault();
+       sendMessage();
+     }
+   };
 
-    async function ingest() {
-      const text = ingestInput.value.trim();
-      const id = ingestId.value.trim();
-      if (!text) return;
+   // Add knowledge to backend
+   async function addData() {
+     const text = dataText.value.trim();
+     const id = dataId.value.trim();
+     if (!text) return;
 
-      ingestBtn.disabled = true;
-      ingestStatus.textContent = "Storing...";
-      ingestStatus.className = "feedback";
+     dataBtn.disabled = true;
+     dataStatus.textContent = "Adding...";
+     dataStatus.className = "feedback";
 
-      try {
-        const res = await fetch(`${backendUrl}/ingest`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text, id })
-        });
-        const data = await res.json();
-        ingestStatus.textContent = data.status || "Stored successfully.";
-        ingestStatus.className = "feedback success";
-        ingestInput.value = "";
-        ingestId.value = "";
-      } catch {
-        ingestStatus.textContent = "Error storing text";
-        ingestStatus.className = "feedback error";
-      } finally {
-        ingestBtn.disabled = false;
-      }
-    }
+     try {
+       const res = await fetch(`${backendUrl}/ingest`, {
+         method: "POST",
+         headers: { "Content-Type": "application/json" },
+         body: JSON.stringify({ text, id })
+       });
+       const data = await res.json();
+       dataStatus.textContent = "✓ Data added successfully";
+       dataStatus.className = "feedback success";
+       dataText.value = "";
+       dataId.value = "";
+     } catch {
+       dataStatus.textContent = "✗ Failed to add data";
+       dataStatus.className = "feedback error";
+     } finally {
+       dataBtn.disabled = false;
+     }
+   }
 
-    async function ask() {
-      const question = questionInput.value.trim();
-      if (!question) return;
-
-      askBtn.disabled = true;
-      answerBox.textContent = "Fetching...";
-
-      try {
-        const res = await fetch(`${backendUrl}/ask`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ question })
-        });
-        const data = await res.json();
-        answerBox.textContent = data.answer || "No response from backend.";
-      } catch {
-        answerBox.textContent = "Error fetching answer";
-      } finally {
-        askBtn.disabled = false;
-      }
-    }
-
-    ingestBtn.addEventListener("click", ingest);
-    askBtn.addEventListener("click", ask);
-
-  </script>
+   dataBtn.onclick = addData;
+ </script>
 
 </body>
 </html>
